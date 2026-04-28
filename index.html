@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agencia — Panel Financiero</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e1da;
+    --border2: #cccbc3;
+    --text: #1a1a18;
+    --text2: #6b6b64;
+    --text3: #9e9e95;
+    --accent: #2d4a3e;
+    --accent-light: #e8f0ec;
+    --accent2: #c8a96e;
+    --income: #2d6a4f;
+    --income-bg: #d8f3dc;
+    --expense: #9b2335;
+    --expense-bg: #fce4e6;
+    --purple: #4a3f7a;
+    --purple-bg: #ede9f8;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* SIDEBAR */
+  .layout { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: var(--accent);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 1.25rem;
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .logo span { display: block; font-size: 18px; font-family: 'DM Sans', sans-serif; font-weight: 600; color: white; letter-spacing: -0.01em; margin-bottom: 2px; }
+
+  .nav-label { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.5rem; margin-top: 1.5rem; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 2px;
+    transition: all 0.15s;
+    border: none; background: none; width: 100%; text-align: left;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: white; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: white; font-weight: 500; }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer { margin-top: auto; font-size: 11px; color: rgba(255,255,255,0.25); }
+
+  /* MAIN */
+  .main { margin-left: 220px; padding: 2rem 2.5rem; flex: 1; max-width: calc(100% - 220px); }
+
+  .page-header { margin-bottom: 2rem; }
+  .page-title { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+  .page-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); margin-bottom: 8px; font-weight: 500; }
+  .metric-value { font-size: 26px; font-weight: 600; letter-spacing: -0.03em; font-family: 'DM Mono', monospace; }
+  .metric-value.income { color: var(--income); }
+  .metric-value.expense { color: var(--expense); }
+  .metric-value.balance { color: var(--purple); }
+  .metric-value.neutral { color: var(--text); }
+  .metric-delta { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* SECTION TABS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* FORMS */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 1.5rem; }
+  .form-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+  .form-grid { display: grid; gap: 12px; align-items: end; }
+  .form-grid-6 { grid-template-columns: 120px 100px 1fr 1fr 1fr auto; }
+  .form-grid-4 { grid-template-columns: 1fr 120px 1fr auto; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr auto; }
+
+  .field label { display: block; font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); background: white; }
+
+  .btn-primary {
+    padding: 9px 20px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    height: 36px;
+  }
+  .btn-primary:hover { background: #1e3329; }
+
+  .btn-ghost {
+    padding: 5px 12px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+  .btn-ghost.danger:hover { border-color: var(--expense); color: var(--expense); }
+
+  /* TABLE */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+  .table-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .table-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .filters { display: flex; gap: 8px; align-items: center; }
+  .filters select { padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .badge-income { background: var(--income-bg); color: var(--income); }
+  .badge-expense { background: var(--expense-bg); color: var(--expense); }
+  .badge-service { background: var(--purple-bg); color: var(--purple); }
+  .badge-client { background: #fff3e0; color: #bf6f00; }
+  .badge-proyecto { background: #e8f4fd; color: #1565c0; }
+
+  .amount-pos { color: var(--income); font-weight: 600; font-family: 'DM Mono', monospace; font-size: 13px; }
+  .amount-neg { color: var(--expense); font-weight: 600; font-family: 'DM Mono', monospace; font-size: 13px; }
+
+  .empty-state { text-align: center; padding: 3rem; color: var(--text3); }
+  .empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+  .empty-state p { font-size: 13px; }
+
+  /* SERVICES GRID */
+  .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .service-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: all 0.15s;
+  }
+  .service-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .service-tag { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+  .service-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.01em; }
+  .service-price { font-size: 22px; font-weight: 600; color: var(--accent); font-family: 'DM Mono', monospace; margin: 8px 0 4px; }
+  .service-price span { font-size: 12px; color: var(--text3); font-family: 'DM Sans', sans-serif; font-weight: 400; }
+  .service-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .service-actions { margin-top: 12px; display: flex; gap: 6px; }
+
+  /* CLIENTES */
+  .clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .client-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .client-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: var(--accent); margin-bottom: 10px; }
+  .client-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .client-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .client-proyectos { margin-top: 10px; }
+  .proyecto-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--surface2); border-radius: 6px; font-size: 11px; color: var(--text2); margin: 2px 2px 2px 0; }
+
+  /* CHART */
+  .chart-wrap { position: relative; width: 100%; height: 280px; }
+  .chart-legend { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+  .section-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: var(--radius-lg); padding: 2rem; width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 1.25rem; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.5rem; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--text); color: white; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span id="agency-name">Mi Agencia</span>
+      Panel financiero
+    </div>
+
+    <div class="nav-label">Principal</div>
+    <button class="nav-item active" onclick="showTab('resumen', this)">
+      <span class="icon">◈</span> Resumen
+    </button>
+    <button class="nav-item" onclick="showTab('movimientos', this)">
+      <span class="icon">⇅</span> Ingresos / Egresos
+    </button>
+
+    <div class="nav-label">Agencia</div>
+    <button class="nav-item" onclick="showTab('servicios', this)">
+      <span class="icon">◻</span> Servicios
+    </button>
+    <button class="nav-item" onclick="showTab('clientes', this)">
+      <span class="icon">◎</span> Clientes y proyectos
+    </button>
+
+    <div class="nav-label">Análisis</div>
+    <button class="nav-item" onclick="showTab('reportes', this)">
+      <span class="icon">▦</span> Reportes
+    </button>
+
+    <div class="sidebar-footer">
+      Datos guardados localmente<br>v1.0
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- RESUMEN -->
+    <div id="tab-resumen" class="section active">
+      <div class="page-header">
+        <div class="page-title">Resumen general</div>
+        <div class="page-sub" id="resumen-fecha"></div>
+      </div>
+      <div class="metrics" id="metrics-resumen"></div>
+      <div class="grid-2">
+        <div>
+          <div class="section-label">Últimos movimientos</div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th style="text-align:right">Monto</th></tr></thead>
+            <tbody id="recent-table"></tbody></table>
+          </div>
+        </div>
+        <div>
+          <div class="section-label">Distribución del mes</div>
+          <div class="card" style="padding:1.25rem">
+            <div class="chart-wrap" style="height:220px"><canvas id="donutChart" role="img" aria-label="Distribución ingresos y egresos del mes">Gráfico de distribución mensual.</canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOVIMIENTOS -->
+    <div id="tab-movimientos" class="section">
+      <div class="page-header">
+        <div class="page-title">Ingresos y egresos</div>
+        <div class="page-sub">Registrá cada entrada y salida de dinero</div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-title">Nuevo movimiento</div>
+        <div class="form-grid form-grid-6">
+          <div class="field"><label>Fecha</label><input type="date" id="mov-fecha"></div>
+          <div class="field"><label>Tipo</label>
+            <select id="mov-tipo">
+              <option value="ingreso">Ingreso</option>
+              <option value="egreso">Egreso</option>
+            </select>
+          </div>
+          <div class="field"><label>Categoría</label>
+            <select id="mov-cat">
+              <option>Servicio vendido</option>
+              <option>Cobro de proyecto</option>
+              <option>Pago de nómina</option>
+              <option>Alquiler/oficina</option>
+              <option>Software/herramientas</option>
+              <option>Publicidad propia</option>
+              <option>Freelancers</option>
+              <option>Impuestos/monotributo</option>
+              <option>Otro</option>
+            </select>
+          </div>
+          <div class="field"><label>Cliente</label>
+            <select id="mov-cliente"><option value="">— Sin cliente —</option></select>
+          </div>
+          <div class="field"><label>Concepto</label><input type="text" id="mov-concepto" placeholder="Ej: Gestión redes sociales — Abril"></div>
+          <div class="field"><label>Monto ($)</label><input type="number" id="mov-monto" placeholder="0"></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <button class="btn-primary" onclick="addMovimiento()">+ Registrar</button>
+          <span id="mov-error" style="font-size:12px;color:var(--expense);"></span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">Historial</span>
+          <div class="filters">
+            <select id="filter-tipo" onchange="renderMovimientos()">
+              <option value="todos">Todos</option>
+              <option value="ingreso">Ingresos</option>
+              <option value="egreso">Egresos</option>
+            </select>
+            <select id="filter-mes" onchange="renderMovimientos()">
+              <option value="todos">Todos los meses</option>
+            </select>
+            <select id="filter-cat" onchange="renderMovimientos()">
+              <option value="todos">Todas las categorías</option>
+            </select>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Cliente</th><th>Tipo</th><th style="text-align:right">Monto</th><th></th></tr></thead>
+          <tbody id="mov-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SERVICIOS -->
+    <div id="tab-servicios" class="section">
+      <div class="page-header">
+        <div class="page-title">Servicios</div>
+        <div class="page-sub">Catálogo de servicios que ofrece la agencia</div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-title">Agregar servicio</div>
+        <div class="form-grid form-grid-4">
+          <div class="field"><label>Nombre</label><input type="text" id="svc-nombre" placeholder="Ej: Gestión de redes sociales"></div>
+          <div class="field"><label>Precio base ($)</label><input type="number" id="svc-precio" placeholder="0"></div>
+          <div class="field"><label>Descripción</label><input type="text" id="svc-desc" placeholder="Breve descripción del servicio"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-primary" onclick="addServicio()">+ Agregar</button></div>
+        </div>
+      </div>
+
+      <div class="services-grid" id="services-grid"></div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div id="tab-clientes" class="section">
+      <div class="page-header">
+        <div class="page-title">Clientes y proyectos</div>
+        <div class="page-sub">Gestioná tus clientes y sus proyectos activos</div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-title">Nuevo cliente</div>
+        <div class="form-grid form-grid-3">
+          <div class="field"><label>Nombre / empresa</label><input type="text" id="cli-nombre" placeholder="Ej: Empresa XYZ S.A."></div>
+          <div class="field"><label>Rubro</label><input type="text" id="cli-rubro" placeholder="Ej: Indumentaria, Gastronomía..."></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-primary" onclick="addCliente()">+ Agregar</button></div>
+        </div>
+      </div>
+
+      <div class="clients-grid" id="clients-grid"></div>
+    </div>
+
+    <!-- REPORTES -->
+    <div id="tab-reportes" class="section">
+      <div class="page-header">
+        <div class="page-title">Reportes</div>
+        <div class="page-sub">Análisis financiero de la agencia</div>
+      </div>
+      <div class="metrics" id="metrics-reportes"></div>
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="section-label">Ingresos vs egresos por mes</div>
+        <div class="chart-wrap"><canvas id="barChart" role="img" aria-label="Gráfico de barras de ingresos y egresos por mes">Datos mensuales de ingresos y egresos.</canvas></div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#2d6a4f"></span>Ingresos</span>
+          <span><span class="legend-dot" style="background:#9b2335"></span>Egresos</span>
+          <span><span class="legend-dot" style="background:#4a3f7a;opacity:0.6"></span>Balance</span>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="section-label">Top categorías — Ingresos</div>
+          <div id="top-income"></div>
+        </div>
+        <div class="card">
+          <div class="section-label">Top categorías — Egresos</div>
+          <div id="top-expense"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL PROYECTO -->
+<div class="modal-overlay" id="modal-proyecto">
+  <div class="modal">
+    <div class="modal-title">Agregar proyecto</div>
+    <input type="hidden" id="proj-client-id">
+    <div class="field" style="margin-bottom:12px"><label>Nombre del proyecto</label><input type="text" id="proj-nombre" placeholder="Ej: Campaña Meta Q2 2025"></div>
+    <div class="field" style="margin-bottom:12px"><label>Servicio</label>
+      <select id="proj-servicio"><option value="">— Seleccioná un servicio —</option></select>
+    </div>
+    <div class="field"><label>Estado</label>
+      <select id="proj-estado"><option>Activo</option><option>En pausa</option><option>Finalizado</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveProyecto()">Guardar proyecto</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────
+const KEYS = { mov: 'ag_movimientos', svc: 'ag_servicios', cli: 'ag_clientes' };
+
+function load(key, def) {
+  try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : def; } catch { return def; }
+}
+function save(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+let movimientos = load(KEYS.mov, []);
+let servicios = load(KEYS.svc, [
+  { id: 1, nombre: 'Gestión de redes sociales', precio: 80000, desc: 'Manejo mensual de hasta 3 redes, contenido + comunidad' },
+  { id: 2, nombre: 'Campaña Meta Ads', precio: 120000, desc: 'Setup, gestión y reporte mensual de campañas' },
+  { id: 3, nombre: 'Diseño gráfico', precio: 40000, desc: 'Pack de piezas gráficas por mes' },
+  { id: 4, nombre: 'Producción de contenido', precio: 60000, desc: 'Videos y fotos para redes y web' },
+]);
+let clientes = load(KEYS.cli, []);
+let chartBar = null, chartDonut = null;
+
+// ── NAV ───────────────────────────────────────────
+function showTab(tab, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tab === 'resumen') renderResumen();
+  if (tab === 'movimientos') { renderMovimientos(); populateFilters(); populateClienteSelect(); }
+  if (tab === 'servicios') renderServicios();
+  if (tab === 'clientes') renderClientes();
+  if (tab === 'reportes') renderReportes();
+}
+
+// ── HELPERS ───────────────────────────────────────
+function fmt(n) {
+  return '$' + Math.round(Number(n)).toLocaleString('es-AR');
+}
+function totales(arr) {
+  const ing = arr.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0);
+  const eg = arr.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0);
+  return { ing, eg, bal: ing - eg };
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function initDate() {
+  document.getElementById('mov-fecha').value = new Date().toISOString().slice(0, 10);
+}
+function mesMes(fecha) { return fecha ? fecha.slice(0, 7) : ''; }
+function clienteName(id) {
+  if (!id) return '—';
+  const c = clientes.find(c => c.id == id);
+  return c ? c.nombre : '—';
+}
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+// ── RESUMEN ────────────────────────────────────────
+function renderResumen() {
+  document.getElementById('resumen-fecha').textContent = new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const { ing, eg, bal } = totales(movimientos);
+  document.getElementById('metrics-resumen').innerHTML = `
+    <div class="metric-card"><div class="metric-label">Total ingresos</div><div class="metric-value income">${fmt(ing)}</div><div class="metric-delta">${movimientos.filter(m=>m.tipo==='ingreso').length} registros</div></div>
+    <div class="metric-card"><div class="metric-label">Total egresos</div><div class="metric-value expense">${fmt(eg)}</div><div class="metric-delta">${movimientos.filter(m=>m.tipo==='egreso').length} registros</div></div>
+    <div class="metric-card"><div class="metric-label">Balance neto</div><div class="metric-value balance">${fmt(bal)}</div><div class="metric-delta">${bal >= 0 ? 'Positivo ✓' : 'Negativo ✗'}</div></div>
+    <div class="metric-card"><div class="metric-label">Clientes activos</div><div class="metric-value neutral">${clientes.length}</div><div class="metric-delta">${servicios.length} servicios activos</div></div>`;
+
+  const recent = [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 8);
+  const tb = document.getElementById('recent-table');
+  tb.innerHTML = recent.length ? recent.map(m => `<tr>
+    <td style="color:var(--text2);font-size:12px">${m.fecha}</td>
+    <td>${m.concepto}</td>
+    <td><span class="badge badge-${m.tipo}">${m.tipo}</span></td>
+    <td style="text-align:right" class="${m.tipo === 'ingreso' ? 'amount-pos' : 'amount-neg'}">${m.tipo === 'ingreso' ? '+' : '−'}${fmt(m.monto)}</td>
+  </tr>`).join('') : '<tr><td colspan="4" class="empty-state"><p>Sin movimientos aún</p></td></tr>';
+
+  renderDonut();
+}
+
+function renderDonut() {
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const mov = movimientos.filter(m => mesMes(m.fecha) === mesActual);
+  const { ing, eg } = totales(mov);
+  if (chartDonut) chartDonut.destroy();
+  if (!ing && !eg) { document.getElementById('donutChart').getContext('2d').clearRect(0, 0, 400, 300); return; }
+  chartDonut = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Ingresos', 'Egresos'],
+      datasets: [{ data: [ing, eg], backgroundColor: ['#2d6a4f', '#9b2335'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '70%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } } }
+    }
+  });
+}
+
+// ── MOVIMIENTOS ────────────────────────────────────
+function addMovimiento() {
+  const err = document.getElementById('mov-error');
+  err.textContent = '';
+  const fecha = document.getElementById('mov-fecha').value;
+  const tipo = document.getElementById('mov-tipo').value;
+  const cat = document.getElementById('mov-cat').value;
+  const clienteId = document.getElementById('mov-cliente').value;
+  const concepto = document.getElementById('mov-concepto').value.trim();
+  const monto = parseFloat(document.getElementById('mov-monto').value);
+  if (!fecha || !concepto) { err.textContent = 'Completá fecha y concepto.'; return; }
+  if (isNaN(monto) || monto <= 0) { err.textContent = 'Ingresá un monto válido.'; return; }
+  movimientos.push({ id: Date.now(), fecha, tipo, categoria: cat, clienteId, concepto, monto });
+  save(KEYS.mov, movimientos);
+  document.getElementById('mov-concepto').value = '';
+  document.getElementById('mov-monto').value = '';
+  renderMovimientos();
+  populateFilters();
+  showToast('Movimiento registrado');
+}
+
+function deleteMovimiento(id) {
+  if (!confirm('¿Eliminar este movimiento?')) return;
+  movimientos = movimientos.filter(m => m.id !== id);
+  save(KEYS.mov, movimientos);
+  renderMovimientos();
+  showToast('Eliminado');
+}
+
+function renderMovimientos() {
+  const tipoFil = document.getElementById('filter-tipo').value;
+  const mesFil = document.getElementById('filter-mes').value;
+  const catFil = document.getElementById('filter-cat').value;
+  let data = [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  if (tipoFil !== 'todos') data = data.filter(m => m.tipo === tipoFil);
+  if (mesFil !== 'todos') data = data.filter(m => mesMes(m.fecha) === mesFil);
+  if (catFil !== 'todos') data = data.filter(m => m.categoria === catFil);
+  const tb = document.getElementById('mov-table');
+  tb.innerHTML = data.length ? data.map(m => `<tr>
+    <td style="font-size:12px;color:var(--text2)">${m.fecha}</td>
+    <td>${m.concepto}</td>
+    <td style="font-size:12px;color:var(--text2)">${m.categoria}</td>
+    <td style="font-size:12px;color:var(--text2)">${clienteName(m.clienteId)}</td>
+    <td><span class="badge badge-${m.tipo}">${m.tipo}</span></td>
+    <td style="text-align:right" class="${m.tipo === 'ingreso' ? 'amount-pos' : 'amount-neg'}">${m.tipo === 'ingreso' ? '+' : '−'}${fmt(m.monto)}</td>
+    <td><button class="btn-ghost danger" onclick="deleteMovimiento(${m.id})">Eliminar</button></td>
+  </tr>`).join('') : '<tr><td colspan="7" class="empty-state"><div class="icon">◌</div><p>Sin movimientos</p></td></tr>';
+}
+
+function populateFilters() {
+  const meses = [...new Set(movimientos.map(m => mesMes(m.fecha)))].filter(Boolean).sort().reverse();
+  const sel = document.getElementById('filter-mes');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="todos">Todos los meses</option>' + meses.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (cur) sel.value = cur;
+
+  const cats = [...new Set(movimientos.map(m => m.categoria))].filter(Boolean).sort();
+  const selCat = document.getElementById('filter-cat');
+  const curCat = selCat.value;
+  selCat.innerHTML = '<option value="todos">Todas las categorías</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  if (curCat) selCat.value = curCat;
+}
+
+function populateClienteSelect() {
+  const sel = document.getElementById('mov-cliente');
+  sel.innerHTML = '<option value="">— Sin cliente —</option>' + clientes.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+}
+
+// ── SERVICIOS ──────────────────────────────────────
+function addServicio() {
+  const nombre = document.getElementById('svc-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('svc-precio').value);
+  const desc = document.getElementById('svc-desc').value.trim();
+  if (!nombre || isNaN(precio)) { showToast('Completá nombre y precio'); return; }
+  servicios.push({ id: Date.now(), nombre, precio, desc });
+  save(KEYS.svc, servicios);
+  document.getElementById('svc-nombre').value = '';
+  document.getElementById('svc-precio').value = '';
+  document.getElementById('svc-desc').value = '';
+  renderServicios();
+  showToast('Servicio agregado');
+}
+
+function deleteServicio(id) {
+  if (!confirm('¿Quitar este servicio?')) return;
+  servicios = servicios.filter(s => s.id !== id);
+  save(KEYS.svc, servicios);
+  renderServicios();
+}
+
+function renderServicios() {
+  const grid = document.getElementById('services-grid');
+  if (!servicios.length) { grid.innerHTML = '<p class="empty-state"><p>Sin servicios cargados</p></p>'; return; }
+  grid.innerHTML = servicios.map(s => `
+    <div class="service-card">
+      <div class="service-tag">Servicio</div>
+      <div class="service-name">${s.nombre}</div>
+      <div class="service-price">${fmt(s.precio)}<span>/mes</span></div>
+      <div class="service-desc">${s.desc || ''}</div>
+      <div class="service-actions">
+        <button class="btn-ghost danger" onclick="deleteServicio(${s.id})">Quitar</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── CLIENTES ───────────────────────────────────────
+function addCliente() {
+  const nombre = document.getElementById('cli-nombre').value.trim();
+  const rubro = document.getElementById('cli-rubro').value.trim();
+  if (!nombre) { showToast('Ingresá el nombre del cliente'); return; }
+  clientes.push({ id: Date.now(), nombre, rubro, proyectos: [] });
+  save(KEYS.cli, clientes);
+  document.getElementById('cli-nombre').value = '';
+  document.getElementById('cli-rubro').value = '';
+  renderClientes();
+  showToast('Cliente agregado');
+}
+
+function deleteCliente(id) {
+  if (!confirm('¿Eliminar este cliente y sus proyectos?')) return;
+  clientes = clientes.filter(c => c.id !== id);
+  save(KEYS.cli, clientes);
+  renderClientes();
+}
+
+function openModalProyecto(clienteId) {
+  document.getElementById('proj-client-id').value = clienteId;
+  document.getElementById('proj-nombre').value = '';
+  document.getElementById('proj-estado').value = 'Activo';
+  const selSvc = document.getElementById('proj-servicio');
+  selSvc.innerHTML = '<option value="">— Seleccioná un servicio —</option>' + servicios.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  document.getElementById('modal-proyecto').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-proyecto').classList.remove('open'); }
+
+function saveProyecto() {
+  const clienteId = parseInt(document.getElementById('proj-client-id').value);
+  const nombre = document.getElementById('proj-nombre').value.trim();
+  const servicio = document.getElementById('proj-servicio').value;
+  const estado = document.getElementById('proj-estado').value;
+  if (!nombre) { showToast('Ingresá un nombre para el proyecto'); return; }
+  const cli = clientes.find(c => c.id === clienteId);
+  if (cli) { cli.proyectos.push({ id: Date.now(), nombre, servicio, estado }); }
+  save(KEYS.cli, clientes);
+  closeModal();
+  renderClientes();
+  showToast('Proyecto agregado');
+}
+
+function deleteProyecto(clienteId, proyId) {
+  const cli = clientes.find(c => c.id === clienteId);
+  if (cli) cli.proyectos = cli.proyectos.filter(p => p.id !== proyId);
+  save(KEYS.cli, clientes);
+  renderClientes();
+}
+
+function renderClientes() {
+  const grid = document.getElementById('clients-grid');
+  if (!clientes.length) { grid.innerHTML = '<p class="empty-state" style="grid-column:1/-1;padding:2rem;color:var(--text3)">Sin clientes cargados</p>'; return; }
+  grid.innerHTML = clientes.map(c => `
+    <div class="client-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="client-avatar">${initials(c.nombre)}</div>
+        <div>
+          <div class="client-name">${c.nombre}</div>
+          <div class="client-meta">${c.rubro || 'Sin rubro'}</div>
+        </div>
+      </div>
+      <div class="client-proyectos">
+        ${c.proyectos.length ? c.proyectos.map(p => `
+          <span class="proyecto-pill">
+            ${p.nombre}${p.servicio ? ' · ' + p.servicio : ''} 
+            <span style="font-size:10px;color:${p.estado==='Activo'?'var(--income)':p.estado==='En pausa'?'var(--accent2)':'var(--text3)'}">${p.estado}</span>
+            <span onclick="deleteProyecto(${c.id},${p.id})" style="cursor:pointer;color:var(--text3);margin-left:2px">×</span>
+          </span>`).join('') : '<span style="font-size:12px;color:var(--text3)">Sin proyectos</span>'}
+      </div>
+      <div style="margin-top:12px;display:flex;gap:6px">
+        <button class="btn-ghost" onclick="openModalProyecto(${c.id})">+ Proyecto</button>
+        <button class="btn-ghost danger" onclick="deleteCliente(${c.id})">Eliminar</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── REPORTES ────────────────────────────────────────
+function renderReportes() {
+  const { ing, eg, bal } = totales(movimientos);
+  document.getElementById('metrics-reportes').innerHTML = `
+    <div class="metric-card"><div class="metric-label">Total ingresos</div><div class="metric-value income">${fmt(ing)}</div></div>
+    <div class="metric-card"><div class="metric-label">Total egresos</div><div class="metric-value expense">${fmt(eg)}</div></div>
+    <div class="metric-card"><div class="metric-label">Balance acumulado</div><div class="metric-value balance">${fmt(bal)}</div></div>
+    <div class="metric-card"><div class="metric-label">Margen</div><div class="metric-value neutral">${ing > 0 ? Math.round(bal / ing * 100) : 0}%</div></div>`;
+
+  const meses = [...new Set(movimientos.map(m => mesMes(m.fecha)))].filter(Boolean).sort();
+  const labels = meses.length ? meses : ['Sin datos'];
+  const ingData = labels.map(mes => movimientos.filter(m => m.tipo === 'ingreso' && mesMes(m.fecha) === mes).reduce((a, m) => a + m.monto, 0));
+  const egData = labels.map(mes => movimientos.filter(m => m.tipo === 'egreso' && mesMes(m.fecha) === mes).reduce((a, m) => a + m.monto, 0));
+  const balData = labels.map((_, i) => ingData[i] - egData[i]);
+
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Ingresos', data: ingData, backgroundColor: '#2d6a4f', borderRadius: 4 },
+        { label: 'Egresos', data: egData, backgroundColor: '#9b2335', borderRadius: 4 },
+        { label: 'Balance', data: balData, type: 'line', borderColor: '#4a3f7a', backgroundColor: 'rgba(74,63,122,0.08)', tension: 0.3, pointRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } } },
+      scales: {
+        y: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        x: { grid: { display: false }, ticks: { autoSkip: false } }
+      }
+    }
+  });
+
+  function topCats(tipo) {
+    const cats = {};
+    movimientos.filter(m => m.tipo === tipo).forEach(m => { cats[m.categoria] = (cats[m.categoria] || 0) + m.monto; });
+    return Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }
+  const topI = topCats('ingreso');
+  const topE = topCats('egreso');
+  const totalI = topI.reduce((a, [, v]) => a + v, 0) || 1;
+  const totalE = topE.reduce((a, [, v]) => a + v, 0) || 1;
+
+  function renderTop(items, total, containerId, color) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = items.length ? items.map(([cat, val]) => `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="color:var(--text)">${cat}</span>
+          <span style="font-family:'DM Mono',monospace;font-weight:500;color:var(--text)">${fmt(val)}</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px">
+          <div style="height:4px;background:${color};border-radius:2px;width:${Math.round(val/total*100)}%"></div>
+        </div>
+      </div>`).join('') : '<p style="font-size:12px;color:var(--text3)">Sin datos</p>';
+  }
+  renderTop(topI, totalI, 'top-income', '#2d6a4f');
+  renderTop(topE, totalE, 'top-expense', '#9b2335');
+}
+
+// ── INIT ───────────────────────────────────────────
+initDate();
+renderResumen();
+renderServicios();
+renderClientes();
+
+document.getElementById('modal-proyecto').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
